@@ -107,95 +107,157 @@ class FabkinCrud extends GeneratorCommand
 
         return $this;
     }
+    protected function buildValidationRules(string $table): string
+    {
+        $columns = $this->getFilteredColumns();
+        $rules = [];
+
+        foreach ($columns as $col) {
+            if (in_array($col, ['id', 'created_at', 'updated_at', 'deleted_at'])) {
+                continue;
+            }
+
+            // Basic guess based on column name/type
+            if (str_contains($col, 'email')) {
+                $rule = "'$col' => 'required|email'";
+            } elseif (str_contains($col, 'password')) {
+                $rule = "'$col' => 'required|string|min:8'";
+            } elseif (str_contains($col, 'date')) {
+                $rule = "'$col' => 'required|date'";
+            } else {
+                $rule = "'$col' => 'required|string'";
+            }
+
+            $rules[] = $rule;
+        }
+
+        // Join rules with commas + indentation
+        return "        " . implode(",\n        ", $rules);
+    }
+    protected function modelReplacements(): array
+    {
+
+        return [
+            '{{rules}}' => $this->buildValidationRules($this->table),
+            '{{fillable}}' => $this->buildFillable($this->table),
+            // aur bhi replacements jo pehle the
+        ];
+    }
+
 
     protected function buildViews(): static
-{
-    $this->info('Creating Views (Bootstrap) ...');
+    {
+        $this->info('Creating Views (Bootstrap) ...');
 
-    $tableHead = "\n";
-    $tableBody = "\n";
-    $viewRows  = "\n";
-    $form      = "\n";
+        $tableHead = "\n";
+        $tableBody = "\n";
+        $viewRows  = "\n";
+        $form      = "\n";
 
-    foreach ($this->getFilteredColumns() as $column) {
-        $title = Str::title(str_replace('_', ' ', $column));
-        $type  = $this->_mapFieldType($column); // custom input type
+        foreach ($this->getFilteredColumns() as $column) {
+            $title = Str::title(str_replace('_', ' ', $column));
+            $type  = $this->_mapFieldType($column); // custom input type
 
-        // Table Header
-        $tableHead .= "<th>{$title}</th>\n";
+            // Table Header
+            $tableHead .= "<th>{$title}</th>\n";
 
-        // Table Body
-        $tableBody .= "<td>{{ \$${this->name}->${column} }}</td>\n";
+            // Table Body
+// Table Body
+            $tableBody .= "<td>{{ \$" . Str::camel($this->name) . "->$column }}</td>\n";
 
-        // Show View
-        $viewRows .= "<p><strong>{$title}:</strong> {{ \$${this->name}->${column} }}</p>\n";
+// Show View
+            $viewRows .= "<p><strong>{$title}:</strong> {{ \$" . Str::camel($this->name) . "->$column }}</p>\n";
 
-        // Form Fields
-        if ($type === 'textarea') {
-            $form .= "
+
+            // Camel case model variable name
+            $modelVar = Str::camel($this->name);
+
+// Form Fields
+            if ($type === 'textarea') {
+                $form .= "
 <div class=\"mb-3\">
     <label for=\"{$column}\" class=\"form-label\">{$title}</label>
-    <textarea name=\"{$column}\" id=\"{$column}\" class=\"form-control\">{{ old('$column', \$${this->name}->$column ?? '') }}</textarea>
+    <textarea name=\"{$column}\" id=\"{$column}\" class=\"form-control\">{{ old('$column', \${$modelVar}->$column ?? '') }}</textarea>
     @error('$column') <span class=\"text-danger\">{{ \$message }}</span> @enderror
 </div>\n";
-        } elseif ($type === 'checkbox') {
-            $form .= "
+            } elseif ($type === 'checkbox') {
+                $form .= "
 <div class=\"form-check mb-3\">
-    <input type=\"checkbox\" name=\"{$column}\" id=\"{$column}\" value=\"1\" class=\"form-check-input\" {{ old('$column', \$${this->name}->$column ?? false) ? 'checked' : '' }}>
+    <input type=\"checkbox\" name=\"{$column}\" id=\"{$column}\" value=\"1\" class=\"form-check-input\" {{ old('$column', \${$modelVar}->$column ?? false) ? 'checked' : '' }}>
     <label for=\"{$column}\" class=\"form-check-label\">{$title}</label>
     @error('$column') <span class=\"text-danger\">{{ \$message }}</span> @enderror
 </div>\n";
-        } else {
-            $form .= "
+            } else {
+                $form .= "
 <div class=\"mb-3\">
     <label for=\"{$column}\" class=\"form-label\">{$title}</label>
-    <input type=\"{$type}\" name=\"{$column}\" id=\"{$column}\" value=\"{{ old('$column', \$${this->name}->$column ?? '') }}\" class=\"form-control\">
+    <input type=\"{$type}\" name=\"{$column}\" id=\"{$column}\" value=\"{{ old('$column', \${$modelVar}->$column ?? '') }}\" class=\"form-control\">
     @error('$column') <span class=\"text-danger\">{{ \$message }}</span> @enderror
 </div>\n";
+            }
+
         }
+
+        $replace = array_merge($this->buildReplacements(), [
+            '{{tableHeader}}' => $tableHead,
+            '{{tableBody}}'   => $tableBody,
+            '{{viewRows}}'    => $viewRows,
+            '{{form}}'        => $form,
+        ]);
+
+        $this->buildLayout();
+
+        foreach (['index', 'create', 'edit', 'form', 'show'] as $view) {
+            $path = "views/bootstrap/$view";
+
+            $viewTemplate = str_replace(
+                array_keys($replace),
+                array_values($replace),
+                $this->getStub($path)
+            );
+
+            $this->write($this->_getViewPath($view), $viewTemplate);
+        }
+
+        return $this;
     }
+    private function _mapFieldType(string $column): string
+    {
+        $col = collect($this->getColumns())->firstWhere('name', $column);
 
-    $replace = array_merge($this->buildReplacements(), [
-        '{{tableHeader}}' => $tableHead,
-        '{{tableBody}}'   => $tableBody,
-        '{{viewRows}}'    => $viewRows,
-        '{{form}}'        => $form,
-    ]);
-
-    $this->buildLayout();
-
-    foreach (['index', 'create', 'edit', 'form', 'show'] as $view) {
-        $path = "views/bootstrap/$view";
-
-        $viewTemplate = str_replace(
-            array_keys($replace),
-            array_values($replace),
-            $this->getStub($path)
-        );
-
-        $this->write($this->_getViewPath($view), $viewTemplate);
+        return match ($col['type_name']) {
+            'int', 'bigint'   => 'number',
+            'bool'            => 'checkbox',
+            'text'            => 'textarea',
+            'date'            => 'date',
+            'datetime'        => 'datetime-local',
+            'timestamp'       => 'datetime-local',
+            default           => 'text',
+        };
     }
-
-    return $this;
-}
-private function _mapFieldType(string $column): string
-{
-    $col = collect($this->getColumns())->firstWhere('name', $column);
-
-    return match ($col['type_name']) {
-        'int', 'bigint'   => 'number',
-        'bool'            => 'checkbox',
-        'text'            => 'textarea',
-        'date'            => 'date',
-        'datetime'        => 'datetime-local',
-        'timestamp'       => 'datetime-local',
-        default           => 'text',
-    };
-}
 
 
     private function _buildClassName(): string
     {
         return Str::studly(Str::singular($this->table));
     }
+
+    /**
+     * @return void
+     */
+    protected function buildFillable(string $table): string
+    {
+        $columns = $this->getFilteredColumns(); // unwanted columns nikal dega
+
+        if (empty($columns)) {
+            return '';
+        }
+
+        // Har column ko quotes ke andar daal ke comma se join karo
+        $fields = array_map(fn($col) => "'$col'", $columns);
+
+        // Proper indentation ke saath return karo
+        return implode(",\n        ", $fields);
+    }
+
 }

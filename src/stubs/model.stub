@@ -3,16 +3,21 @@
 namespace {{modelNamespace}};
 
 use Illuminate\Database\Eloquent\Model;
-{{softDeletesNamespace}}
+
 /**
  * Class {{modelName}}
- {{properties}}
- * @package App
+ *
+{{properties}}
+ * @package App\Models
  * @mixin \Illuminate\Database\Eloquent\Builder
  */
 class {{modelName}} extends Model
 {
-    {{softDeletes}}
+    /**
+     * Pagination limit per page
+     *
+     * @var int
+     */
     protected $perPage = 20;
 
     /**
@@ -20,7 +25,8 @@ class {{modelName}} extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [{{fillable}}];
+    protected $fillable = [
+        {{fillable}}
+    ];
 
-{{relations}}
 }
