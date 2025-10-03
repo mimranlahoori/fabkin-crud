@@ -26,13 +26,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Fabkin\\CrudGenerator\\": "src/"
+            "Lahori\\FabkinCrud\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Fabkin\\CrudGenerator\\CrudServiceProvider"
+                "Lahori\\FabkinCrud\\CrudServiceProvider"
             ]
         }
     },

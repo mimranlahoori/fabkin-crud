@@ -1,6 +1,6 @@
 <?php
 
-namespace Fabkin\CrudGenerator\Commands;
+namespace Lahori\FabkinCrud\Commands;
 
 use Exception;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;

@@ -1,8 +1,8 @@
 <?php
 
-namespace Fabkin\CrudGenerator;
+namespace Lahori\FabkinCrud;
 
-use Fabkin\CrudGenerator\Commands\CrudGenerator;
+use Lahori\FabkinCrud\Commands\FabkinCrud;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -19,7 +19,7 @@ class CrudServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                CrudGenerator::class,
+                FabkinCrud::class,
             ]);
         }
 

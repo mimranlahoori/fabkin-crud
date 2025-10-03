@@ -1,9 +1,9 @@
 <?php
 
-namespace Fabkin\CrudGenerator\Commands;
+namespace Lahori\FabkinCrud\Commands;
 
 use Exception;
-use Fabkin\CrudGenerator\ModelGenerator;
+use Lahori\FabkinCrud\ModelGenerator;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;

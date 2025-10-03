@@ -1,6 +1,6 @@
 <?php
 
-namespace Fabkin\CrudGenerator;
+namespace Lahori\FabkinCrud;
 
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
