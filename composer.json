@@ -1,6 +1,6 @@
 {
     "name": "lahori/fabkin-crud",
-    "description": "Laravel CRUD Generator",
+    "description": "Fabkin Laravel CRUD Generator",
     "license": "MIT",
     "authors": [
         {
@@ -36,6 +36,5 @@
             ]
         }
     },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "minimum-stability": "stable"
 }
