@@ -1,0 +1,41 @@
+{
+    "name": "lahori/fabkin-crud",
+    "description": "Laravel CRUD Generator",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "M Imran Lahori",
+            "email": "imranklahoori@gmail.com"
+        }
+    ],
+    "keywords": [
+        "laravel",
+        "crud",
+        "crud generator",
+        "laravel crud generator",
+        "laravel package",
+        "bootstrap css",
+        "tailwind css",
+        "alpine js",
+        "livewire",
+        "fabkin crud"
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.30|^11.44|^12.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fabkin\\CrudGenerator\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Fabkin\\CrudGenerator\\CrudServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
