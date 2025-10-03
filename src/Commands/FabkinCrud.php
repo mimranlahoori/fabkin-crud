@@ -6,7 +6,7 @@ use Exception;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Str;
 
-class CrudGenerator extends GeneratorCommand
+class FabkinCrud extends GeneratorCommand
 {
     protected $signature = 'make:crud {name : Table name} {--route= : Custom route name}';
 
