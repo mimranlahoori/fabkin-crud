@@ -192,7 +192,7 @@ abstract class GeneratorCommand extends Command implements PromptsForMissingInpu
         return str_replace(
             array_keys($replace),
             array_values($replace),
-            "\t\t\t\t\t\t<td>{{ ${{modelNameLowerCase}}->{{column}} }}</td>\n"
+            "\t\t\t\t\t\t<td>{{ $" . "{{modelNameLowerCase}}" . "->" . "{{column}}" . " }}</td>\n"
         );
     }
 
