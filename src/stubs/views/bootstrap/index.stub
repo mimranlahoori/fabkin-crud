@@ -33,6 +33,13 @@
                     @endif
 
                     <div class="card-body">
+                    <form method="GET" action="{{ route('{{modelRoute}}.index') }}" class="mb-3">
+    <div class="input-group">
+        <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control" placeholder="Search...">
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+</form>
+
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead class="thead">

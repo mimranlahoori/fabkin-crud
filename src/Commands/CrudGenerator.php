@@ -5,58 +5,27 @@ namespace Fabkin\CrudGenerator\Commands;
 use Exception;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Str;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-use function Laravel\Prompts\select;
 
-/**
- * Class CrudGenerator.
- *
- * @author  Imran <imranklahoori@gmail.com>
- */
 class CrudGenerator extends GeneratorCommand
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'make:crud
-                            {name : Table name}
-                            {stack : The development stack that should be installed (bootstrap,tailwind,livewire,api)}
-                            {--route= : Custom route name}';
+    protected $signature = 'make:crud {name : Table name} {--route= : Custom route name}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Create Laravel CRUD operations';
+    protected $description = 'Create Laravel CRUD operations with Bootstrap';
 
-    /**
-     * Execute the console command.
-     *
-     * @throws FileNotFoundException
-     */
     public function handle()
     {
-        $this->info('Running Crud Generator ...');
+        $this->info('Running Crud Generator (Bootstrap only)...');
 
         $this->table = $this->getNameInput();
 
-        // If table not exist in DB return
         if (! $this->tableExists()) {
             $this->error("`$this->table` table not exist");
-
             return false;
         }
 
-        // Build the class name from table name
         $this->name = $this->_buildClassName();
 
-        // Generate the crud
-        $this->buildOptions()
-            ->buildController()
+        $this->buildController()
             ->buildModel()
             ->buildViews()
             ->writeRoute();
@@ -66,82 +35,24 @@ class CrudGenerator extends GeneratorCommand
         return true;
     }
 
-    protected function promptForMissingArgumentsUsing(): array
-    {
-        return [
-            'stack' => fn() => select(
-                label: 'Which stack would you like to install?',
-                options: [
-                    'bootstrap' => 'Blade with Bootstrap css',
-                    'tailwind' => 'Blade with Tailwind css',
-                    'livewire' => 'Livewire with Tailwind css',
-                    'api' => 'API only',
-                ],
-                scroll: 4,
-            ),
-        ];
-    }
-
-    protected function afterPromptingForMissingArguments(InputInterface $input, OutputInterface $output): void
-    {
-        $this->options['stack'] = match ($input->getArgument('stack')) {
-            'tailwind' => 'tailwind',
-            'livewire' => 'livewire',
-            'react' => 'react',
-            'vue' => 'vue',
-            default => 'bootstrap',
-        };
-    }
-
     protected function writeRoute(): static
     {
         $replacements = $this->buildReplacements();
 
-        $this->info('Please add route below: i:e; web.php or api.php');
-
+        $this->info('Please add this route in web.php:');
         $this->info('');
 
-        $lines = match ($this->options['stack']) {
-            'livewire' => [
-                "Route::get('/{$this->_getRoute()}', \\$this->livewireNamespace\\{$replacements['{{modelNamePluralUpperCase}}']}\Index::class)->name('{$this->_getRoute()}.index');",
-                "Route::get('/{$this->_getRoute()}/create', \\$this->livewireNamespace\\{$replacements['{{modelNamePluralUpperCase}}']}\Create::class)->name('{$this->_getRoute()}.create');",
-                "Route::get('/{$this->_getRoute()}/show/{{$replacements['{{modelNameLowerCase}}']}}', \\$this->livewireNamespace\\{$replacements['{{modelNamePluralUpperCase}}']}\Show::class)->name('{$this->_getRoute()}.show');",
-                "Route::get('/{$this->_getRoute()}/update/{{$replacements['{{modelNameLowerCase}}']}}', \\$this->livewireNamespace\\{$replacements['{{modelNamePluralUpperCase}}']}\Edit::class)->name('{$this->_getRoute()}.edit');",
-            ],
-            'api' => [
-                "Route::apiResource('".$this->_getRoute()."', {$this->name}Controller::class);",
-            ],
-            default => [
-                "Route::resource('".$this->_getRoute()."', {$this->name}Controller::class);",
-            ]
-        };
+        $line = "Route::resource('" . $this->_getRoute() . "', {$this->name}Controller::class);";
 
-        foreach ($lines as $line) {
-            $this->info('<bg=blue;fg=white>'.$line.'</>');
-        }
-
+        $this->info('<bg=blue;fg=white>'.$line.'</>');
         $this->info('');
 
         return $this;
     }
 
-    /**
-     * Build the Controller Class and save in app/Http/Controllers.
-     *
-     * @return $this
-     * @throws FileNotFoundException
-     */
     protected function buildController(): static
     {
-        if ($this->options['stack'] == 'livewire') {
-            $this->buildLivewire();
-
-            return $this;
-        }
-
-        $controllerPath = $this->options['stack'] == 'api'
-            ? $this->_getApiControllerPath($this->name)
-            : $this->_getControllerPath($this->name);
+        $controllerPath = $this->_getControllerPath($this->name);
 
         if ($this->files->exists($controllerPath) && $this->ask('Already exist Controller. Do you want overwrite (y/n)?', 'y') == 'n') {
             return $this;
@@ -151,62 +62,17 @@ class CrudGenerator extends GeneratorCommand
 
         $replace = $this->buildReplacements();
 
-        $stubFolder = match ($this->options['stack']) {
-            'api' => 'api/',
-            default => ''
-        };
-
         $controllerTemplate = str_replace(
-            array_keys($replace), array_values($replace), $this->getStub($stubFolder.'Controller')
+            array_keys($replace),
+            array_values($replace),
+            $this->getStub('Controller') // sirf bootstrap wali stub rakho
         );
 
         $this->write($controllerPath, $controllerTemplate);
 
-        if ($this->options['stack'] == 'api') {
-            $resourcePath = $this->_getResourcePath($this->name);
-
-            $resourceTemplate = str_replace(
-                array_keys($replace), array_values($replace), $this->getStub($stubFolder.'Resource')
-            );
-
-            $this->write($resourcePath, $resourceTemplate);
-        }
-
         return $this;
     }
 
-    protected function buildLivewire(): void
-    {
-        $this->info('Creating Livewire Component ...');
-
-        $folder = ucfirst(Str::plural($this->name));
-        $replace = array_merge($this->buildReplacements(), $this->modelReplacements());
-
-        foreach (['Index', 'Show', 'Edit', 'Create'] as $component) {
-            $componentPath = $this->_getLivewirePath($folder.'/'.$component);
-
-            $componentTemplate = str_replace(
-                array_keys($replace), array_values($replace), $this->getStub('livewire/'.$component)
-            );
-
-            $this->write($componentPath, $componentTemplate);
-        }
-
-        // Form
-        $formPath = $this->_getLivewirePath('Forms/'.$this->name.'Form');
-
-        $componentTemplate = str_replace(
-            array_keys($replace), array_values($replace), $this->getStub('livewire/Form')
-        );
-
-        $this->write($formPath, $componentTemplate);
-    }
-
-    /**
-     * @return $this
-     * @throws FileNotFoundException
-     *
-     */
     protected function buildModel(): static
     {
         $modelPath = $this->_getModelPath($this->name);
@@ -217,22 +83,24 @@ class CrudGenerator extends GeneratorCommand
 
         $this->info('Creating Model ...');
 
-        // Make the models attributes and replacement
         $replace = array_merge($this->buildReplacements(), $this->modelReplacements());
 
         $modelTemplate = str_replace(
-            array_keys($replace), array_values($replace), $this->getStub('Model')
+            array_keys($replace),
+            array_values($replace),
+            $this->getStub('Model')
         );
 
         $this->write($modelPath, $modelTemplate);
 
-        // Make Request Class
         $requestPath = $this->_getRequestPath($this->name);
 
         $this->info('Creating Request Class ...');
 
         $requestTemplate = str_replace(
-            array_keys($replace), array_values($replace), $this->getStub('Request')
+            array_keys($replace),
+            array_values($replace),
+            $this->getStub('Request')
         );
 
         $this->write($requestPath, $requestTemplate);
@@ -240,19 +108,9 @@ class CrudGenerator extends GeneratorCommand
         return $this;
     }
 
-    /**
-     * @return $this
-     * @throws FileNotFoundException
-     *
-     * @throws Exception
-     */
     protected function buildViews(): static
     {
-        if ($this->options['stack'] == 'api') {
-            return $this;
-        }
-
-        $this->info('Creating Views ...');
+        $this->info('Creating Views (Bootstrap) ...');
 
         $tableHead = "\n";
         $tableBody = "\n";
@@ -278,15 +136,12 @@ class CrudGenerator extends GeneratorCommand
         $this->buildLayout();
 
         foreach (['index', 'create', 'edit', 'form', 'show'] as $view) {
-            $path = $this->isCustomStubFolder()
-                ? "views/{$this->options['stack']}/$view"
-                : match ($this->options['stack']) {
-                    'livewire' => $this->isLaravel12() ? "views/{$this->options['stack']}/12/$view" : "views/{$this->options['stack']}/default/$view",
-                    default => "views/{$this->options['stack']}/$view"
-                };
+            $path = "views/bootstrap/$view";
 
             $viewTemplate = str_replace(
-                array_keys($replace), array_values($replace), $this->getStub($path)
+                array_keys($replace),
+                array_values($replace),
+                $this->getStub($path)
             );
 
             $this->write($this->_getViewPath($view), $viewTemplate);
@@ -295,11 +150,6 @@ class CrudGenerator extends GeneratorCommand
         return $this;
     }
 
-    /**
-     * Make the class name from table name.
-     *
-     * @return string
-     */
     private function _buildClassName(): string
     {
         return Str::studly(Str::singular($this->table));

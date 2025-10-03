@@ -14,13 +14,25 @@ class {{modelName}}Controller extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): View
-    {
-        ${{modelNamePluralLowerCase}} = {{modelName}}::paginate();
+public function index(Request $request): View
+{
+    $query = {{modelName}}::query();
 
-        return view('{{modelView}}.index', compact('{{modelNamePluralLowerCase}}'))
-            ->with('i', ($request->input('page', 1) - 1) * ${{modelNamePluralLowerCase}}->perPage());
+    // agar search parameter aya ho
+    if ($search = $request->input('search')) {
+        $query->where(function ($q) use ($search) {
+            // yahan tum apne searchable columns define kar do
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+        });
     }
+
+    ${{modelNamePluralLowerCase}} = $query->paginate();
+
+    return view('{{modelView}}.index', compact('{{modelNamePluralLowerCase}}', 'search'))
+        ->with('i', ($request->input('page', 1) - 1) * ${{modelNamePluralLowerCase}}->perPage());
+}
+
 
     /**
      * Show the form for creating a new resource.

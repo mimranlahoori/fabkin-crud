@@ -1,6 +1,6 @@
 <?php
 
-namespace Ibex\CrudGenerator;
+namespace Fabkin\CrudGenerator;
 
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
