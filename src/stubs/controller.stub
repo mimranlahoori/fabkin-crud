@@ -16,22 +16,64 @@ class {{modelName}}Controller extends Controller
      */
 public function index(Request $request): View
 {
-    $query = {{modelName}}::query();
+    // Dynamic model aur table setup
+    $model = {{modelName}}::query();
+    $table = (new {{modelName}})->getTable();
+    $columns = \Schema::getColumnListing($table);
+    $firstColumn = $columns[0] ?? 'id';
 
-    // agar search parameter aya ho
+    // 🕵️‍♂️ 1. SEARCH
     if ($search = $request->input('search')) {
-        $query->where(function ($q) use ($search) {
-            // yahan tum apne searchable columns define kar do
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%");
+        $model->where(function ($q) use ($search, $columns, $firstColumn) {
+            // pehle first column check karo
+            $q->where($firstColumn, 'like', "%{$search}%");
+
+            // agar 'name' aur 'email' exist karte hain to unko bhi include kar lo
+            if (in_array('name', $columns)) {
+                $q->orWhere('name', 'like', "%{$search}%");
+            }
+            if (in_array('email', $columns)) {
+                $q->orWhere('email', 'like', "%{$search}%");
+            }
         });
     }
 
-    ${{modelNamePluralLowerCase}} = $query->paginate();
+// 🧱 FILTER (status)
+    if (in_array('status', $columns)) {
+        if ($status = $request->input('status')) {
+            $model->where('status', $status);
+        }
 
-    return view('{{modelView}}.index', compact('{{modelNamePluralLowerCase}}', 'search'))
+        // unique status values for dropdown
+        $statuses = {{modelName}}::select('status')
+            ->distinct()
+            ->pluck('status')
+            ->filter() // null ya empty hata dega
+            ->values();
+    } else {
+        $statuses = collect(); // agar table me status column hi nahi hai
+    }
+
+    // 🔃 3. SORTING
+    $sort = $request->input('sort');
+    $direction = $request->input('direction', 'asc');
+
+    if ($sort && in_array($sort, $columns)) {
+        $model->orderBy($sort, $direction);
+    } else {
+        // default sorting by created_at desc agar column hai to
+        if (in_array('created_at', $columns)) {
+            $model->orderBy('created_at', 'desc');
+        }
+    }
+
+    // ✅ Pagination
+    ${{modelNamePluralLowerCase}} = $model->paginate(10);
+
+    return view('{{modelView}}.index', compact('{{modelNamePluralLowerCase}}', 'search', 'sort', 'direction', 'statuses'))
         ->with('i', ($request->input('page', 1) - 1) * ${{modelNamePluralLowerCase}}->perPage());
 }
+
 
 
     /**

@@ -5,6 +5,8 @@ namespace Lahori\FabkinCrud\Commands;
 use Exception;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class FabkinCrud extends GeneratorCommand
 {
@@ -28,27 +30,15 @@ class FabkinCrud extends GeneratorCommand
         $this->buildController()
             ->buildModel()
             ->buildViews()
-            ->writeRoute();
+            ->addRoutes($this->name)
+            ->generateFactory($this->name)
+            ->generateSeeder($this->name);
 
         $this->info('Created Successfully.');
 
         return true;
     }
 
-    protected function writeRoute(): static
-    {
-        $replacements = $this->buildReplacements();
-
-        $this->info('Please add this route in web.php:');
-        $this->info('');
-
-        $line = "Route::resource('" . $this->_getRoute() . "', {$this->name}Controller::class);";
-
-        $this->info('<bg=blue;fg=white>'.$line.'</>');
-        $this->info('');
-
-        return $this;
-    }
 
     protected function buildController(): static
     {
@@ -259,5 +249,61 @@ class FabkinCrud extends GeneratorCommand
         // Proper indentation ke saath return karo
         return implode(",\n        ", $fields);
     }
+    protected function addRoutes($name)
+    {
+        $routeContent = "\n// {$name} CRUD Routes\nRoute::resource('" . Str::plural(strtolower($name)) . "', \\App\\Http\\Controllers\\{$name}Controller::class);\n";
 
+        File::append(base_path('routes/web.php'), $routeContent);
+        return $this;
+
+    }
+
+    protected function generateFactory($name)
+    {
+        $table = strtolower($name) . 's'; // ya apni naming logic lagale
+        $columns = Schema::getColumnListing($table);
+
+        // remove unwanted columns
+        $columns = array_diff($columns, ['id', 'created_at', 'updated_at', 'deleted_at']);
+
+        $fields = "";
+        foreach ($columns as $column) {
+            $fields .= "            '$column' => ";
+            if (str_contains($column, 'name')) {
+                $fields .= "\$this->faker->name(),\n";
+            } elseif (str_contains($column, 'email')) {
+                $fields .= "\$this->faker->unique()->safeEmail(),\n";
+            } elseif (str_contains($column, 'phone')) {
+                $fields .= "\$this->faker->phoneNumber(),\n";
+            } elseif (str_contains($column, 'address')) {
+                $fields .= "\$this->faker->address(),\n";
+            } elseif (str_contains($column, 'date')) {
+                $fields .= "\$this->faker->date(),\n";
+            } else {
+                $fields .= "\$this->faker->word(),\n";
+            }
+        }
+
+        $stub = File::get(__DIR__ . '/../Stubs/factory.stub');
+        $stub = str_replace('{{Model}}', $name, $stub);
+        $stub = str_replace('// Add more fields as needed', $fields, $stub);
+
+        $path = database_path("factories/{$name}Factory.php");
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, $stub);
+        return $this;
+    }
+
+    protected function generateSeeder($name)
+    {
+        $stub = File::get(__DIR__ . '/../Stubs/seeder.stub');
+        $stub = str_replace('{{Model}}', $name, $stub);
+        $stub = str_replace('{{model}}', strtolower($name), $stub);
+
+        $path = database_path("seeders/{$name}Seeder.php");
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, $stub);
+        return $this;
+
+    }
 }

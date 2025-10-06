@@ -3,6 +3,7 @@
 namespace {{modelNamespace}};
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 /**
  * Class {{modelName}}
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class {{modelName}} extends Model
 {
+use HasFactory;
     /**
      * Pagination limit per page
      *
